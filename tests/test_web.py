@@ -147,6 +147,7 @@ class LasImagenes(unittest.TestCase):
     def test_los_dos_idiomas_tienen_las_mismas_imagenes(self):
         pares = [("THE-GAME.md", "LA-PARTIDA.md"), ("THE-TOURNAMENT.md", "EL-TORNEO.md"),
                  ("THE-PLAYS.md", "LAS-JUGADAS.md"),
+                 ("THE-SPRITES.md", "LOS-SPRITES.md"),
                  ("THE-TEXTS.md", "LOS-TEXTOS.md"), ("THE-MUSIC.md", "LA-MUSICA.md"),
                  ("CURIOSITIES.md", "CURIOSIDADES.md"), ("UNDER-THE-HOOD.md", "POR-DENTRO.md")]
         for en, es in pares:

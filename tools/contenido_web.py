@@ -87,6 +87,11 @@ PAGINAS = [
      ("THE-PLAYS.html", "LAS-JUGADAS.html", "The plays", "Las jugadas",
       "a game against the computer, played in GIF",
       "una partida contra el ordenador, jugada en GIF"),
+     ("THE-SPRITES.html", "LOS-SPRITES.html", "The sprites", "Los sprites",
+      "every sprite drawing, the batter right- and left-handed and his swing frame by frame, put together from the "
+      "ROM tables",
+      "todos los dibujos de los sprites, el bateador diestro y zurdo y su swing cuadro a cuadro, montados desde las "
+      "tablas de la ROM"),
      ("THE-TEXTS.html", "LOS-TEXTOS.html", "The texts", "Los textos",
       "every text in the ROM, with its translation",
       "todos los textos de la ROM, con su traducci&oacute;n"),
