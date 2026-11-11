@@ -171,7 +171,7 @@ fin_partida:		; La partida acabada: la musica, el resultado y vuelta a empezar
 	call torneo_resultado		;815e   ; en el marcador
 	pop de			;8161
 	ld a,(0e006h)		;8162   ; dos jugadores?
-	rlca			;8165   ; bit 7: un jugador
+	rlca			;8165   ; bit 7: dos jugadores
 	jr c,fin_ronda		;8166
 	ld a,e			;8168   ; el ordenador gana?
 	cp d			;8169   ; gana el ordenador o empatan: fin
@@ -246,7 +246,7 @@ espera_musica:		; Espera a que la musica acabe (0xE404)
 	ret z			;81fa
 	jr espera_musica		;81fb
 elige_jugadores:		; 1 PLAYER VS. CPU o 2 PLAYERS: la flecha con el mando, el boton elige
-	ld hl,0e006h		;81fd   ; 0xE006: dos jugadores de momento
+	ld hl,0e006h		;81fd   ; 0xE006 = 0x20: uno contra el ordenador, de momento
 	ld (hl),020h		;8200
 elige_jugadores_bucle:		; Lee los mandos
 	push af			;8202
@@ -286,10 +286,10 @@ L_8239:
 	call bloque		;8240   ; a la tabla de nombres
 	pop af			;8243
 	jr elige_jugadores_bucle		;8244
-elige_jugadores_boton:		; El boton: 0x80 un jugador, 0x00 dos (0xE006)
-	rrca			;8246   ; la opcion: 0 dos jugadores...
+elige_jugadores_boton:		; El boton: la opcion 1 (dos jugadores) pone 0x80 en 0xE006; la 0 lo deja en 0x20
+	rrca			;8246   ; la opcion: 0 uno contra el ordenador...
 	ret nc			;8247
-	ld a,080h		;8248   ; ...1: un jugador (bit 7)
+	ld a,080h		;8248   ; ...1: dos jugadores (bit 7)
 	ld (0e006h),a		;824a
 	ret			;824d
 
@@ -395,9 +395,9 @@ irq_juego:		; La interrupcion del juego: un cuadro entero, si la anterior ha aca
 	jr c,irq_juego_2		;8303
 	call marcador		;8305   ; paso 0: los marcadores de las carreras
 	jr irq_juego_todos		;8308
-irq_juego_1:		; Paso 1: el campo, las bases, el cartel y las marcas de las bases
+irq_juego_1:		; Paso 1: los colores del campo, los jugadores de la defensa, la ventana y los corredores de primera y segunda
 	call colores_campo		;830a   ; el campo: los colores
-	call bases_pinta		;830d   ; las bases
+	call defensa_pinta		;830d   ; los jugadores de la defensa
 	call cartel		;8310   ; la ventana
 	ld c,001h		;8313   ; las marcas de primera...
 	call marca_base		;8315
@@ -686,7 +686,7 @@ fase_bateador_nuevo:		; Si no hay cartel en marcha: la ventana, las cuentas y el
 	ld (0e013h),a		;8679   ; strikes...
 	ld (0e014h),a		;867c   ; ...y bolas a cero
 	ld (0e0a1h),a		;867f   ; la cuenta de cuadros a cero
-	call bases_repinta		;8682   ; las casillas de las bases a repintar
+	call defensa_repinta		;8682   ; los nueve jugadores de la defensa, a repintar
 	call sonido_calla		;8685   ; el sonido callado
 	call sprites_jugada_fuera		;8688   ; los sprites de la jugada, fuera
 	call bateador_siguiente		;868b   ; el bateador siguiente: zurdo o diestro (0x8777)
@@ -897,9 +897,9 @@ fase_lanzador:		; El lanzador en su sitio: los sprites, la pelota y el lanzamien
 	ld (0e008h),a		;87ef   ; el lanzador...
 	ld (0e00ah),a		;87f2   ; ...el bateador...
 	ld (0e00dh),a		;87f5   ; ...y la jugada en marcha
-	call bases_repinta		;87f8   ; las casillas de las bases a repintar
+	call defensa_repinta		;87f8   ; los nueve jugadores de la defensa, a repintar
 	ld a,0c0h		;87fb   ; la pelota, fuera
-	ld (0e24dh),a		;87fd   ; (0xE24D: la marca de la base)
+	ld (0e24dh),a		;87fd   ; (0xE24D: el lanzador en casillas, a borrar)
 	call sonido_calla		;8800   ; el sonido callado
 	ld hl,08020h		;8803   ; la fase del lanzamiento
 	ld (0e001h),hl		;8806
@@ -1023,7 +1023,7 @@ robo:		; El robo de base: el corredor sale con el mando del que batea
 	ret z			;88e1   ; el boton?
 	ld b,a			;88e2
 	ld a,(0e01bh)		;88e3   ; las bases ocupadas
-	bit 3,b		;88e6   ; arriba: el de primera...
+	bit 3,b		;88e6   ; a la derecha: el de primera...
 	jr z,robo_segunda		;88e8
 	bit 1,a		;88ea   ; el de primera ya corre?
 	ret nz			;88ec
@@ -1032,8 +1032,8 @@ robo:		; El robo de base: el corredor sale con el mando del que batea
 	ret nz			;88f2
 	ld a,091h		;88f3   ; ...sale hacia segunda
 	jr robo_sale		;88f5
-robo_segunda:		; A la derecha: el de segunda
-	bit 0,b		;88f7   ; a la derecha?
+robo_segunda:		; Arriba: el de segunda
+	bit 0,b		;88f7   ; arriba?
 	jr z,robo_tercera		;88f9
 	bit 2,a		;88fb
 	ret nz			;88fd
@@ -1079,7 +1079,7 @@ toque:		; El toque (bunt): la pelota llega al bate quieto
 	ld hl,08020h		;893f
 	ld (0e01ch),hl		;8942   ; 0xE01C
 	ld bc,00000h		;8945   ; la base del bateador
-	call base_marca		;8948
+	call jugador_marca		;8948
 	ld (ix+000h),010h		;894b   ; el paso 4
 	call corredores_ordenes_borra		;894f   ; el bateador corre
 	ld b,000h		;8952   ; el sonido del toque (0x895C)
@@ -1241,7 +1241,7 @@ bateada_sale:		; Espera 32 cuadros: el destino de la pelota
 	cp 020h		;8a58   ; 32 cuadros
 	ret c			;8a5a
 	ld a,080h		;8a5b
-	ld (0e24dh),a		;8a5d   ; (0xE24D)
+	ld (0e24dh),a		;8a5d   ; (0xE24D: el lanzador en casillas, a pintar)
 	xor a			;8a60
 	ld (0e00fh),a		;8a61
 	ld (0e01ah),a		;8a64
@@ -1572,7 +1572,7 @@ corredores_fin_robo:		; Tras un robo
 	ld (0e001h),hl		;8cda
 	ret			;8cdd
 corredores_fin_cambio:		; Tras el tercer out
-	call bases_repinta		;8cde   ; las bases a repintar
+	call defensa_repinta		;8cde   ; los jugadores de la defensa, a repintar
 	ld hl,00820h		;8ce1   ; la fase del cambio de campo
 	ld (0e001h),hl		;8ce4
 	ret			;8ce7
@@ -1867,7 +1867,7 @@ fase_robo:		; El robo de base: el lanzador lanza a la base
 	ld (0e01ah),a		;8f01
 	ld a,090h		;8f04   ; el tiro
 	ld (0e054h),a		;8f06
-	ld a,0c1h		;8f09   ; la marca de la base
+	ld a,0c1h		;8f09   ; el receptor en casillas, a borrar
 	ld (0e24eh),a		;8f0b
 	ld hl,00100h		;8f0e   ; la cuenta
 	ld (0e09eh),hl		;8f11
@@ -1909,46 +1909,46 @@ sprites_jugada_fuera:		; Los sprites de la jugada, fuera de la pantalla (Y 0xC2)
 	ld (0e168h),a		;8f4b
 	ld (0e174h),a		;8f4e
 	ret			;8f51
-bases_repinta:		; Las nueve casillas de las bases, a repintar
+defensa_repinta:		; Los nueve jugadores de la defensa, a repintar
 	ld bc,00008h		;8f52   ; nueve casillas, C de 8 a 0
-bases_repinta_una:		; Una
-	call base_marca		;8f55
+defensa_repinta_uno:		; Uno
+	call jugador_marca		;8f55
 	dec c			;8f58
-	jp p,bases_repinta_una		;8f59
+	jp p,defensa_repinta_uno		;8f59
 	ret			;8f5c
-base_marca:		; Marca la casilla C de las bases (0xE24D): B bit 0, ocupada
+jugador_marca:		; Marca al jugador C de la defensa (0xE24D) para repintarlo: B bit 0, borrarlo (ya corre en un sprite)
 	ld hl,0e24dh		;8f5d   ; la casilla C...
 	ld d,000h		;8f60
 	ld e,c			;8f62
 	add hl,de			;8f63
 	ld a,080h		;8f64   ; 0x80: a repintar...
 	bit 0,b		;8f66   ; ...vacia...
-	jr z,base_marca_pon		;8f68
+	jr z,jugador_marca_pon		;8f68
 	ld a,0c0h		;8f6a   ; ...o 0xC0: ocupada
-base_marca_pon:		; La marca
+jugador_marca_pon:		; La marca
 	or c			;8f6c
 	ld (hl),a			;8f6d   ; guardada
 	ret			;8f6e
-bases_pinta:		; Pinta las casillas de las bases marcadas (0x8FE7 sus sitios, 0x8FCB sus dibujos)
+defensa_pinta:		; Pinta los jugadores de la defensa marcados, en casillas (0x8FE7 sus sitios, 0x8FCB sus dibujos)
 	ld b,009h		;8f6f   ; nueve casillas
 	ld hl,0e24dh		;8f71
-bases_pinta_busca:		; La siguiente marcada
+defensa_pinta_busca:		; El siguiente marcado
 	bit 7,(hl)		;8f74   ; a repintar?
-	jr nz,bases_pinta_una		;8f76
-bases_pinta_sig:		; La siguiente
+	jr nz,defensa_pinta_uno		;8f76
+defensa_pinta_sig:		; El siguiente
 	inc hl			;8f78
-	djnz bases_pinta_busca		;8f79
+	djnz defensa_pinta_busca		;8f79
 	ret			;8f7b
-bases_pinta_una:		; Una casilla: su dibujo segun la base y si esta ocupada
+defensa_pinta_uno:		; Uno: su dibujo segun quien es, o vacio si hay que borrarlo
 	push bc			;8f7c
 	push hl			;8f7d
 	ld a,(hl)			;8f7e   ; la marca...
 	ld (hl),000h		;8f7f   ; ...ya pintada
 	ld b,000h		;8f81   ; vacia...
 	bit 6,a		;8f83   ; ...u ocupada
-	jr z,bases_pinta_base		;8f85
+	jr z,defensa_pinta_quien		;8f85
 	ld b,0ffh		;8f87
-bases_pinta_base:		; La base
+defensa_pinta_quien:		; Quien es
 	and 03fh		;8f89   ; su numero
 	ld c,a			;8f8b
 	ld a,c			;8f8c
@@ -1965,44 +1965,45 @@ bases_pinta_base:		; La base
 	ld hl,08fcbh		;8f9c   ; los dibujos
 	ld a,c			;8f9f
 	cp 001h		;8fa0   ; la casilla 1...
-	jr z,bases_pinta_casa		;8fa2
-	jr c,bases_pinta_cero		;8fa4   ; ...la 0...
+	jr z,defensa_pinta_receptor		;8fa2
+	jr c,defensa_pinta_lanzador		;8fa4   ; ...la 0...
 	bit 0,b		;8fa6   ; ...ocupada...
-	jr nz,bases_pinta_d2		;8fa8
+	jr nz,defensa_pinta_d2		;8fa8
 	cp 006h		;8faa   ; ...las bases 2 a 5...
-	jr nc,bases_pinta_d5		;8fac
+	jr nc,defensa_pinta_d5		;8fac
 	add hl,de			;8fae
-bases_pinta_d5:		; Un dibujo mas
+defensa_pinta_d5:		; Un dibujo mas
 	add hl,de			;8faf
-bases_pinta_d4:		; Un dibujo mas
+defensa_pinta_d4:		; Un dibujo mas
 	add hl,de			;8fb0
-bases_pinta_d3:		; Un dibujo mas
+defensa_pinta_d3:		; Un dibujo mas
 	add hl,de			;8fb1
-bases_pinta_d2:		; Un dibujo mas
+defensa_pinta_d2:		; Un dibujo mas
 	add hl,de			;8fb2
-bases_pinta_d1:		; Un dibujo mas
+defensa_pinta_d1:		; Un dibujo mas
 	add hl,de			;8fb3
-bases_pinta_dibujo:		; Las 2 x 2 casillas a la tabla de nombres
+defensa_pinta_dibujo:		; Las 2 x 2 casillas a la tabla de nombres
 	pop de			;8fb4
 	ld bc,00202h		;8fb5   ; 2 x 2 casillas
 	call bloque		;8fb8   ; a la tabla de nombres
 	pop hl			;8fbb
 	pop bc			;8fbc
-	jr bases_pinta_sig		;8fbd   ; la siguiente
-bases_pinta_casa:		; La casa
+	jr defensa_pinta_sig		;8fbd   ; la siguiente
+defensa_pinta_receptor:		; El receptor (1)
 	bit 0,b		;8fbf
-	jr z,bases_pinta_d3		;8fc1
-	jr bases_pinta_d1		;8fc3
-bases_pinta_cero:		; La 0
+	jr z,defensa_pinta_d3		;8fc1
+	jr defensa_pinta_d1		;8fc3
+defensa_pinta_lanzador:		; El lanzador (0)
 	bit 0,b		;8fc5
-	jr z,bases_pinta_d4		;8fc7
-	jr bases_pinta_dibujo		;8fc9
+	jr z,defensa_pinta_d4		;8fc7
+	jr defensa_pinta_dibujo		;8fc9
 
 ; ----------------------------------------------------------------------
-; DATOS bases_dibujos: Los dibujos de las bases: siete juegos de 2 x 2
-;   casillas (vacia, ocupada...)
+; DATOS defensa_dibujos: Los dibujos de los jugadores de la defensa: siete
+;   juegos de 2 x 2 casillas (vacio, el lanzador, el receptor, los del cuadro
+;   y los de fuera)
 ;   0x8fcb..0x8fe7  (28 bytes)
-DATA_bases_dibujos:
+DATA_defensa_dibujos:
 	defb 002h,002h,002h,002h	; 8fcb
 	defb 0aah,06ah,002h,002h	; 8fcf
 	defb 003h,003h,003h,003h	; 8fd3
@@ -2012,10 +2013,10 @@ DATA_bases_dibujos:
 	defb 01ch,01dh,01eh,01fh	; 8fe3
 
 ; ----------------------------------------------------------------------
-; DATOS bases_sitios: Los sitios de las nueve casillas de las bases en la
+; DATOS defensa_sitios: Los sitios de los nueve jugadores de la defensa en la
 ;   tabla de nombres
 ;   0x8fe7..0x8ff9  (18 bytes)
-DATA_bases_sitios:
+DATA_defensa_sitios:
 	defw 0020fh,002cfh,001f9h,001b3h,001e5h,001abh,00186h,0014fh,00198h	; 8fe7
 
 ; ======================================================================
@@ -2650,7 +2651,7 @@ DATA_ventana_lanzamiento:
 ; El ordenador juega con el segundo mando: en cada fase escribe en 0xE08E la direccion y el boton que pulsaria un jugador.
 ; ----------------------------------------------------------------------
 ordenador:		; Los mandos del ordenador, segun la fase
-	ld hl,0e006h		;94de   ; uno contra el ordenador?
+	ld hl,0e006h		;94de   ; dos jugadores? entonces el ordenador no juega
 	bit 7,(hl)		;94e1   ; un jugador?
 	ret nz			;94e3
 	xor a			;94e4   ; su mando a cero
@@ -2700,14 +2701,14 @@ ordenador_azar:		; Otro numero al azar (el registro R)
 	ld a,(0e0a0h)		;9537   ; la cuenta de cuadros...
 	bit 6,a		;953a   ; ...bit 6?
 	ret nz			;953c
-	ld (ix+000h),022h		;953d   ; el boton, en los cuadros pares de 64
+	ld (ix+000h),022h		;953d   ; abajo y el boton 2, en los cuadros pares de 64
 	ret			;9541
 ordenador_batea:		; Batea: mueve el bate hacia la pelota y el boton al llegar a su altura
 	ld hl,0e040h		;9542
 	bit 7,(hl)		;9545   ; bit 7?
 	jr z,ordenador_batea_x		;9547
 	res 7,(hl)		;9549   ; una vez
-	ld (ix+000h),028h		;954b   ; el boton y la izquierda
+	ld (ix+000h),028h		;954b   ; a la derecha y el boton 2
 ordenador_batea_x:		; La X del bate hacia la de la pelota
 	ld bc,00000h		;954f
 	ld a,(0e091h)		;9552   ; la pelota...
@@ -2756,7 +2757,7 @@ ordenador_corredores:		; Los corredores: a la base siguiente, segun por donde va
 	ld a,(hl)			;95a6
 	cp 0beh		;95a7   ; ...pasada la mitad?
 	jr nc,ordenador_corredor2		;95a9
-	ld (ix+000h),028h		;95ab   ; el boton y arriba
+	ld (ix+000h),028h		;95ab   ; a la derecha y el boton 2
 	jr ordenador_roba		;95af
 ordenador_corredor2:		; El de segunda
 	ld c,002h		;95b1   ; el de segunda
@@ -2767,7 +2768,7 @@ ordenador_corredor2:		; El de segunda
 	ld a,(hl)			;95bc
 	cp 070h		;95bd   ; pasada la mitad?
 	jr nc,ordenador_corredor3		;95bf
-	ld (ix+000h),021h		;95c1   ; el boton y a la derecha
+	ld (ix+000h),021h		;95c1   ; arriba y el boton 2
 	jr ordenador_roba		;95c5
 ordenador_corredor3:		; El de tercera
 	ld c,003h		;95c7   ; el de tercera
@@ -2778,7 +2779,7 @@ ordenador_corredor3:		; El de tercera
 	ld a,(hl)			;95d2
 	cp 042h		;95d3   ; pasada la mitad?
 	jr c,ordenador_roba		;95d5
-	ld (ix+000h),024h		;95d7   ; el boton y abajo
+	ld (ix+000h),024h		;95d7   ; a la izquierda y el boton 2
 ordenador_roba:		; El robo: al azar
 	ld a,(0e0a9h)		;95db   ; la cuenta...
 	cp 010h		;95de   ; ...16?
@@ -2850,7 +2851,7 @@ ordenador_bateada_base:		; A que base
 	bit 5,l		;9654   ; ...sin corredor en marcha?
 	jr nz,ordenador_bateada_2		;9656
 	set 4,(ix+000h)		;9658   ; el boton...
-	set 2,(ix+000h)		;965c   ; ...a segunda
+	set 2,(ix+000h)		;965c   ; ...a la izquierda: tercera
 	ret			;9660
 ordenador_bateada_2:		; A segunda
 	bit 1,l		;9661   ; segunda ocupada?
@@ -2859,7 +2860,7 @@ ordenador_bateada_2:		; A segunda
 	jr nz,ordenador_bateada_1		;9667
 	cp 007h		;9669   ; la direccion...
 	jr nc,ordenador_bateada_1		;966b
-	set 0,(ix+000h)		;966d   ; el boton a la derecha
+	set 0,(ix+000h)		;966d   ; el boton y arriba: segunda
 	set 4,(ix+000h)		;9671
 	ret			;9675
 ordenador_bateada_1:		; A primera
@@ -2871,8 +2872,8 @@ ordenador_bateada_1:		; A primera
 	jr c,ordenador_bateada_3		;967e
 	cp 009h		;9680
 	ret c			;9682
-ordenador_bateada_3:		; A tercera
-	set 3,(ix+000h)		;9683   ; el boton abajo
+ordenador_bateada_3:		; Hacia primera
+	set 3,(ix+000h)		;9683   ; el boton y a la derecha: primera
 	set 4,(ix+000h)		;9687
 	ret			;968b
 ordenador_corre:		; Los corredores del ordenador
@@ -2888,21 +2889,21 @@ ordenador_corre:		; Los corredores del ordenador
 	jr z,ordenador_corre_vuelve		;969d
 	ld a,(0e015h)		;969f
 	cp 002h		;96a2
-	jr nc,ordenador_boton		;96a4
+	jr nc,ordenador_derecha		;96a4
 ordenador_corre_base:		; Hacia la base libre
 	ld a,(0e01bh)		;96a6   ; las bases
 	rra			;96a9   ; primera...
 	rra			;96aa
 	rra			;96ab
-	jr c,ordenador_derecha		;96ac
+	jr c,ordenador_abajo		;96ac
 	rla			;96ae   ; segunda...
 	jr c,ordenador_izquierda		;96af
 	rla			;96b1   ; tercera...
-	jr c,ordenador_abajo		;96b2
+	jr c,ordenador_arriba		;96b2
 	push hl			;96b4
 	call alguno_corre		;96b5   ; alguno corre?
 	pop hl			;96b8
-	jr z,ordenador_boton		;96b9
+	jr z,ordenador_derecha		;96b9
 	res 4,(hl)		;96bb   ; sin boton
 	ret			;96bd
 ordenador_corre_vuelve:		; O vuelven
@@ -2913,13 +2914,13 @@ ordenador_corre_vuelve:		; O vuelven
 	ld a,(0e01bh)		;96c6   ; las bases
 	and 007h		;96c9
 	jr nz,ordenador_corre_base		;96cb
-ordenador_abajo:		; Abajo
+ordenador_arriba:		; Arriba
 	set 0,(hl)		;96cd
 	ret			;96cf
-ordenador_boton:		; El boton
+ordenador_derecha:		; A la derecha
 	set 3,(hl)		;96d0
 	ret			;96d2
-ordenador_derecha:		; A la derecha
+ordenador_abajo:		; Abajo
 	set 1,(hl)		;96d3
 	ret			;96d5
 ordenador_izquierda:		; A la izquierda
@@ -2937,9 +2938,9 @@ ordenador_fin_jugada:		; Al acabar la jugada
 	rlca			;96e6
 	jr c,ordenador_izquierda		;96e7
 	rlca			;96e9   ; segunda?
-	jr c,ordenador_abajo		;96ea
+	jr c,ordenador_arriba		;96ea
 	rlca			;96ec   ; primera?
-	jr c,ordenador_boton		;96ed
+	jr c,ordenador_derecha		;96ed
 	ret			;96ef
 lanzador:		; El lanzador (0xE008): se pone, se mueve de lado y lanza
 	ld ix,0e008h		;96f0   ; IX = su estado
@@ -2958,7 +2959,7 @@ lanzador:		; El lanzador (0xE008): se pone, se mueve de lado y lanza
 	ret			;970b
 lanzador_pone:		; En su sitio (X 0x78), con el color del equipo
 	ld a,0c0h		;970c
-	ld (0e24dh),a		;970e   ; 0xE24D
+	ld (0e24dh),a		;970e   ; el lanzador en casillas, a borrar: ahora es sprite
 	ld hl,07802h		;9711   ; Y 0x02, X 0x78
 	ld (0e1a0h),hl		;9714
 	ld hl,(0e01eh)		;9717   ; el color del equipo...
@@ -3188,24 +3189,24 @@ pelota_tamano:		; El tamano segun la distancia (0x990E)
 	ret nz			;98d4
 	ld a,(0e258h)		;98d5   ; el mando del que lanza
 	ld hl,0e092h		;98d8
-	bit 0,a		;98db   ; a la derecha?
-	jr nz,pelota_efecto_der		;98dd
-	bit 1,a		;98df   ; a la izquierda?
-	jr z,pelota_efecto_izq		;98e1
+	bit 0,a		;98db   ; arriba?
+	jr nz,pelota_efecto_arriba		;98dd
+	bit 1,a		;98df   ; abajo?
+	jr z,pelota_efecto_x		;98e1
 	dec (hl)			;98e3   ; dos menos
 	dec (hl)			;98e4
-	jr pelota_efecto_izq		;98e5
-pelota_efecto_der:		; El efecto, con el mando del que lanza: a la derecha...
+	jr pelota_efecto_x		;98e5
+pelota_efecto_arriba:		; El efecto, con el mando del que lanza: arriba, un punto mas...
 	inc (hl)			;98e7
-pelota_efecto_izq:		; ...o a la izquierda
+pelota_efecto_x:		; ...y a la izquierda o a la derecha
 	ld hl,0e091h		;98e8
-	bit 2,a		;98eb   ; arriba?
-	jr nz,pelota_efecto_baja		;98ed
-	bit 3,a		;98ef   ; abajo?
+	bit 2,a		;98eb   ; a la izquierda?
+	jr nz,pelota_efecto_izq		;98ed
+	bit 3,a		;98ef   ; a la derecha?
 	ret z			;98f1
-	inc (hl)			;98f2   ; mas abajo
+	inc (hl)			;98f2   ; un punto a la derecha
 	ret			;98f3
-pelota_efecto_baja:		; Mas baja
+pelota_efecto_izq:		; Un punto a la izquierda
 	dec (hl)			;98f4
 	ret			;98f5
 pelota_llega:		; Ha llegado: fin del vuelo
@@ -3266,10 +3267,10 @@ tiro_base_pon:		; La base de destino
 	ld (0e152h),a		;9964
 	ld hl,00000h		;9967   ; el camino a cero
 	ld (0e044h),hl		;996a
-	ld a,c			;996d   ; la casilla de la base
+	ld a,c			;996d   ; el jugador de esa base, en casillas
 	ld (0e046h),a		;996e
 	ld b,001h		;9971   ; ocupada
-	call base_marca		;9973
+	call jugador_marca		;9973
 	ld hl,07883h		;9976   ; la pelota en el lanzador...
 	ld (0e1a4h),hl		;9979
 	ld hl,00f3ch		;997c   ; ...dibujo 0x3C, color 0x0F
@@ -3383,9 +3384,9 @@ tiro_base_lanzador:		; Vuelve al lanzador
 	xor a			;9a6d   ; el tiro...
 	ld (0e043h),a		;9a6e
 	ld (0e04ch),a		;9a71   ; ...y el campo, a cero
-	ld bc,(0e046h)		;9a74   ; la casilla de la base...
+	ld bc,(0e046h)		;9a74   ; el jugador de la base...
 	ld b,000h		;9a78   ; ...vacia
-	call base_marca		;9a7a
+	call jugador_marca		;9a7a
 	ld hl,08040h		;9a7d   ; el lanzador otra vez
 	ld (0e001h),hl		;9a80
 	ret			;9a83
@@ -3610,7 +3611,7 @@ bateador_mueve:		; Se mueve hacia delante o hacia atras en la caja
 	ld bc,08198h		;9e1a   ; ...o del zurdo
 bateador_mueve_x:		; La X
 	ld a,(ix+005h)		;9e1d   ; la X del bateador
-	bit 2,d		;9e20   ; atras?
+	bit 2,d		;9e20   ; a la izquierda?
 	ld hl,0e1adh		;9e22   ; los cuatro sprites
 	ld de,00004h		;9e25
 	jr z,bateador_delante		;9e28
@@ -3642,7 +3643,7 @@ bateador_altura:		; La altura del bate: arriba o abajo
 	and 003h		;9e4b   ; arriba o abajo?
 	ret z			;9e4d
 	ld hl,0e1b8h		;9e4e   ; la Y del bate
-	cp 001h		;9e51   ; abajo?
+	cp 001h		;9e51   ; arriba (1)?
 	ld a,(hl)			;9e53
 	jr z,bateador_baja		;9e54
 	cp 027h		;9e56   ; hasta 0x27
@@ -3937,13 +3938,13 @@ corredores_boton_base:		; A que base
 	push ix		;a070
 	pop hl			;a072
 	ld b,001h		;a073   ; primera
-	bit 3,(hl)		;a075   ; arriba?
+	bit 3,(hl)		;a075   ; a la derecha: primera?
 	jr nz,corredores_boton_bit		;a077
 	ld b,002h		;a079   ; segunda
-	bit 0,(hl)		;a07b   ; derecha?
+	bit 0,(hl)		;a07b   ; arriba: segunda?
 	jr nz,corredores_boton_bit		;a07d
 	ld b,004h		;a07f   ; tercera
-	bit 2,(hl)		;a081   ; izquierda?
+	bit 2,(hl)		;a081   ; a la izquierda: tercera?
 	ret z			;a083
 corredores_boton_bit:		; El bit
 	and b			;a084   ; se puede?
@@ -4212,7 +4213,7 @@ base_por_bolas_pone:		; El bateador a primera y los demas, uno mas
 	ld (0e066h),a		;a232
 	ld (0e00dh),a		;a235
 	ld bc,00000h		;a238   ; la casilla de casa...
-	call base_marca		;a23b   ; ...vacia
+	call jugador_marca		;a23b   ; ...vacia
 	ld c,000h		;a23e   ; el bateador...
 	call corredor_base		;a240
 	ld (hl),080h		;a243   ; ...corre
@@ -4268,7 +4269,7 @@ golpe_corre:		; Corre
 	ld a,003h		;a296   ; el bateador...
 	ld (0e023h),a		;a298   ; ...a la tercera velocidad
 	ld bc,00000h		;a29b   ; la casilla de casa vacia
-	call base_marca		;a29e
+	call jugador_marca		;a29e
 	ld hl,0e01eh		;a2a1   ; la jugada en marcha
 	set 7,(hl)		;a2a4
 	xor a			;a2a6   ; las partes a cero
@@ -4370,7 +4371,7 @@ campo_cubre_pon:		; Su destino
 	ld (0e04eh),hl		;a355   ; a donde va
 	xor a			;a358
 	ld (0e05fh),a		;a359   ; sin base
-	ld a,0c0h		;a35c   ; la marca de la base
+	ld a,0c0h		;a35c   ; el lanzador en casillas, a borrar
 	ld (0e24dh),a		;a35e
 	ld a,(0e01fh)		;a361   ; el color del equipo
 	ld (0e167h),a		;a364
@@ -4400,7 +4401,7 @@ campo_2:		; El de segunda
 campo_3:		; El de tercera
 	ld a,003h		;a392
 	ld bc,00004h		;a394
-campo_va:		; El que va, y su base marcada
+campo_va:		; El que va: su sitio en casillas se borra (ahora corre en un sprite)
 	ld hl,0e166h		;a397
 	ld (hl),b			;a39a   ; su direccion
 	ld (0e04eh),bc		;a39b   ; guardada
@@ -4408,8 +4409,8 @@ campo_va:		; El que va, y su base marcada
 	add a,002h		;a3a0   ; su base...
 	ld c,a			;a3a2
 	ld (0e05fh),a		;a3a3   ; ...guardada...
-	ld b,001h		;a3a6   ; ...ocupada
-	call base_marca		;a3a8
+	ld b,001h		;a3a6   ; ...a borrar en casillas
+	call jugador_marca		;a3a8
 	pop af			;a3ab
 	rlca			;a3ac   ; como la coge...
 	ld hl,0e04dh		;a3ad
@@ -4453,7 +4454,7 @@ campo_jardin_va:		; El que va
 	ld a,030h		;a3ef   ; ...corriendo
 	ld (0e055h),a		;a3f1
 	ld b,001h		;a3f4
-	call base_marca		;a3f6   ; ocupada
+	call jugador_marca		;a3f6   ; a borrar en casillas
 	pop af			;a3f9
 	ld hl,0e04dh		;a3fa   ; como la coge
 	rlca			;a3fd
@@ -4723,16 +4724,16 @@ tiro_elige:		; El mando elige la base
 	and 00fh		;a5f7
 	cp c			;a5f9
 	jr z,tiro_marca		;a5fa
-	ld a,c			;a5fc   ; la de antes ocupada?
-	call base_ocupada		;a5fd
+	ld a,c			;a5fc   ; el jugador que cubria la de antes
+	call cubre_base		;a5fd
 	jr nc,tiro_marca		;a600
-	ld b,000h		;a602   ; ...vacia
-	call base_marca		;a604
+	ld b,000h		;a602   ; ...se vuelve a pintar
+	call jugador_marca		;a604
 tiro_marca:		; La base marcada
-	ld a,(0e054h)		;a607   ; la nueva...
-	call base_ocupada		;a60a
-	ld b,0ffh		;a60d   ; ...marcada
-	call base_marca		;a60f
+	ld a,(0e054h)		;a607   ; el que cubre la nueva...
+	call cubre_base		;a60a
+	ld b,0ffh		;a60d   ; ...a borrar: sale en un sprite
+	call jugador_marca		;a60f
 	ld hl,0a682h		;a612   ; su sitio
 	ld de,00002h		;a615
 	ld b,004h		;a618   ; cuatro bases
@@ -4772,7 +4773,7 @@ tiro_color:		; El color de la marca, que parpadea
 tiro_color_pon:		; Guardado
 	ld (0e173h),a		;a656
 	ret			;a659
-base_ocupada:		; CY si la base A esta ocupada por un corredor de los cuatro
+cubre_base:		; CY si hay quien cubra la base A (0xE055): C, el jugador de la defensa que la cubre (0xA668)
 	ld b,004h		;a65a
 	ld hl,0e055h		;a65c   ; los cuatro bits de las bases ocupadas
 	ld d,(hl)			;a65f
@@ -4784,9 +4785,9 @@ base_ocupada_uno:		; Uno
 	ret			;a667
 
 ; ----------------------------------------------------------------------
-; DATOS bases_casillas: Las casillas de las bases para la marca
+; DATOS cubren: El jugador de la defensa que cubre cada base: dos por base
 ;   0xa668..0xa670  (8 bytes)
-DATA_bases_casillas:
+DATA_cubren:
 	defb 002h,003h,004h,005h,001h,001h,003h,005h	; a668  ........
 
 ; ======================================================================
@@ -4873,21 +4874,21 @@ tiro_sale:		; Sale
 	and 0f1h		;a6f4
 	ld (0e055h),a		;a6f6
 tiro_sale_marca:		; Las bases
-	ld bc,(0e05fh)		;a6f9   ; las dos casillas...
+	ld bc,(0e05fh)		;a6f9   ; los dos jugadores...
 	push bc			;a6fd
 	ld b,000h		;a6fe
-	call base_marca		;a700   ; ...vacias
+	call jugador_marca		;a700   ; ...se vuelven a pintar
 	pop bc			;a703
 	ld c,b			;a704
 	ld b,000h		;a705
-	call base_marca		;a707
+	call jugador_marca		;a707
 	jr tiro_sale_va		;a70a
 tiro_sale_otro:		; Otra
 	ld a,(0e05eh)		;a70c   ; la base de antes...
-	call base_ocupada		;a70f   ; ...ocupada?
+	call cubre_base		;a70f   ; ...ocupada?
 	jr nc,tiro_sale_va		;a712
-	ld b,000h		;a714   ; vacia
-	call base_marca		;a716
+	ld b,000h		;a714   ; se vuelve a pintar
+	call jugador_marca		;a716
 	ld a,(0e055h)		;a719   ; sin bits de corredores
 	and 0f1h		;a71c
 	ld (0e055h),a		;a71e
@@ -5125,44 +5126,44 @@ mandos:		; Los dos mandos: el teclado (filas 3, 5, 6 y 7), GTSTCK y GTTRIG, en 0
 	ld bc,00000h		;a8c8   ; B el mando 1, C el mando 2
 	ld a,003h		;a8cb   ; la fila 3 del teclado
 	call snsmat		;a8cd
-	bit 1,a		;a8d0   ; una tecla...
-	jr nz,mandos_d		;a8d2
-	set 3,c		;a8d4   ; ...abajo del 2
-mandos_d:		; La tecla D? (fila 3 bit 2)
-	bit 2,a		;a8d6   ; otra...
+	bit 1,a		;a8d0   ; la D...
+	jr nz,mandos_e		;a8d2
+	set 3,c		;a8d4   ; ...derecha del 2
+mandos_e:		; La E: arriba del 2
+	bit 2,a		;a8d6   ; la E...
 	jr nz,mandos_f5		;a8d8
-	set 0,c		;a8da   ; ...derecha del 2
-mandos_f5:		; La fila 5
+	set 0,c		;a8da   ; ...arriba del 2
+mandos_f5:		; La fila 5: la S, izquierda del 2
 	ld a,005h		;a8dc   ; la fila 5
 	call snsmat		;a8de
-	bit 0,a		;a8e1   ; una tecla...
+	bit 0,a		;a8e1   ; la S...
 	jr nz,mandos_f5b		;a8e3
 	set 2,c		;a8e5   ; ...izquierda del 2
-mandos_f5b:		; Otra tecla
-	bit 5,a		;a8e7   ; otra...
+mandos_f5b:		; La X: abajo del 2
+	bit 5,a		;a8e7   ; la X...
 	jr nz,mandos_cursores		;a8e9
-	set 1,c		;a8eb   ; ...arriba del 2
+	set 1,c		;a8eb   ; ...abajo del 2
 mandos_cursores:		; Los cursores (GTSTCK 0)
 	ld a,000h		;a8ed   ; los cursores
 	call stick		;a8ef
 	ld b,a			;a8f2   ; al mando 1
 	ld a,006h		;a8f3   ; la fila 6
 	call snsmat		;a8f5
-	bit 1,a		;a8f8   ; una tecla...
+	bit 1,a		;a8f8   ; CTRL...
 	jr nz,mandos_f7		;a8fa
 	set 4,c		;a8fc   ; ...boton del 2
-mandos_f7:		; La fila 7
+mandos_f7:		; La fila 7: TAB, el boton 2 del 2
 	ld a,007h		;a8fe   ; la fila 7
 	call snsmat		;a900
-	bit 3,a		;a903   ; una tecla...
+	bit 3,a		;a903   ; TAB...
 	jr nz,mandos_f7b		;a905
 	set 5,c		;a907   ; ...boton 2 del 2
-mandos_f7b:		; Otra
-	bit 5,a		;a909   ; otra...
+mandos_f7b:		; BS: el boton 2 del 1
+	bit 5,a		;a909   ; BS...
 	jr nz,mandos_f7c		;a90b
 	set 5,b		;a90d   ; ...boton 2 del 1
-mandos_f7c:		; Otra
-	bit 7,a		;a90f   ; otra...
+mandos_f7c:		; RETURN: el boton 1 del 1
+	bit 7,a		;a90f   ; RETURN...
 	jr nz,mandos_joy1		;a911
 	set 4,b		;a913   ; ...boton del 1
 mandos_joy1:		; El mando 1
@@ -5217,8 +5218,8 @@ mandos_gatillo4:		; El 4
 	or a			;a95c
 	jr z,mandos_barra		;a95d
 	set 5,c		;a95f   ; al 2
-mandos_barra:		; Con dos jugadores, la barra y la fila 6 son del primero
-	ld a,(0e006h)		;a961   ; un jugador?
+mandos_barra:		; Contra el ordenador, la barra y GRAPH son tambien los botones del primero
+	ld a,(0e006h)		;a961   ; dos jugadores?
 	bit 7,a		;a964
 	jr nz,mandos_guarda		;a966
 	xor a			;a968   ; GTTRIG 0: la barra...
@@ -5249,10 +5250,10 @@ mandos_guarda:		; Guarda y lo recien pulsado
 	and c			;a98d
 	inc hl			;a98e
 	ld (hl),a			;a98f   ; guardado
-	ld a,(0e006h)		;a990   ; un jugador?
+	ld a,(0e006h)		;a990   ; dos jugadores?
 	rlca			;a993
 	ret c			;a994
-	ld hl,0e08ch		;a995   ; con dos, el mando 1 tambien...
+	ld hl,0e08ch		;a995   ; contra el ordenador, el mando 1 lleva tambien...
 	ld a,(0e08eh)		;a998
 	or (hl)			;a99b   ; ...con lo del 2
 	ld (hl),a			;a99c

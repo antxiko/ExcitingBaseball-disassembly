@@ -24,14 +24,14 @@
 #   0xE001/0xE002 la fase de la jugada y su paso (un bit por fase: 0x8639 los reparte)
 #   0xE003 los carteles de la cuenta (STRIKE, BALL, OUT, CHANGE: 0x905A y 0x90C8)
 #   0xE004 la media entrada (0, 1... 17; 0x11 = la parte baja de la novena)
-#   0xE006 la partida: bit 0 acabada, bit 6 batea el segundo, bit 7 uno o dos jugadores
+#   0xE006 la partida: bit 0 acabada, bit 6 batea el segundo, bit 7 dos jugadores (0x20: uno contra el ordenador)
 #   0xE007 la interrupcion: bit 0 corriendo, bit 1 ya ha pasado un cuadro
 #   0xE013/0xE014/0xE015 strikes, bolas y outs   0xE021/0xE022 el bateador de cada equipo (0-8)
 #   0xE025/0xE026 el cartel parpadeante y su cuenta   0xE027-0xE03A las carreras por entrada de los dos (9 + 9 y la suma)
 #   0xE030 / 0xE03A las carreras de cada equipo   0xE067 cuatro corredores (6 bytes: la base en los bits 0-1)
-#   0xE08C/0xE08E los dos mandos (bit 4 boton)   0xE0A0-0xE0AB doce cuentas que suben cada cuadro
+#   0xE08C/0xE08E los dos mandos (bit 0 arriba, 1 abajo, 2 izquierda, 3 derecha, 4 boton 1, 5 boton 2)   0xE0A0-0xE0AB doce cuentas que suben cada cuadro
 #   0xE150-0xE1EF la tabla de sprites en la RAM (0xE1A0 en adelante va a 0x1B00)
-#   0xE24D nueve casillas de las bases que cambian   0xE404 suena la musica   0xE600 el dibujo de la ventana
+#   0xE24D los nueve jugadores de la defensa, en casillas (0 el lanzador, 1 el receptor...): 0x80 a pintar, 0xC0 a borrar   0xE404 suena la musica   0xE600 el dibujo de la ventana
 
 # ======================================================================
 # EL ARRANQUE Y EL BUCLE
@@ -129,7 +129,7 @@ L 0x821B elige_jugadores_abajo     Abajo
 L 0x8223 elige_jugadores_cambia    La otra opcion
 L 0x8224 elige_jugadores_flecha    La flecha (0x824E, 0x8251 o un hueco: parpadea con la cuenta 0xE0A0)
 C 0x8240 a la tabla de nombres
-L 0x8246 elige_jugadores_boton     El boton: 0x80 un jugador, 0x00 dos (0xE006)
+L 0x8246 elige_jugadores_boton     El boton: la opcion 1 (dos jugadores) pone 0x80 en 0xE006; la 0 lo deja en 0x20
 D 0x824E 0x8257 flechas  La flecha de la opcion: tres casillas en tres sitios
 L 0x8257 elige_equipo_bucle        La region del jugador: el mando mueve una marca por las ocho del cuadro
 L 0x8258 elige_equipo_lee          Lee los mandos
@@ -155,7 +155,7 @@ C 0x82F6 los sprites que parpadean
 C 0x82F9 los sprites a la VRAM
 C 0x82FC la cuenta de cuadros: tres pasos que se turnan
 C 0x8305 paso 0: los marcadores de las carreras
-L 0x830A irq_juego_1               Paso 1: el campo, las bases, el cartel y las marcas de las bases
+L 0x830A irq_juego_1               Paso 1: los colores del campo, los jugadores de la defensa, la ventana y los corredores de primera y segunda
 L 0x831F irq_juego_2               Paso 2: la cuenta (S, B, O)
 L 0x8322 irq_juego_todos           Todos los cuadros: los mandos, los jugadores, la pelota y las cuentas
 C 0x8322 los mandos
@@ -223,7 +223,7 @@ C 0x8676 la jugada, a cero
 C 0x8679 strikes...
 C 0x867C ...y bolas a cero
 C 0x867F la cuenta de cuadros a cero
-C 0x8682 las casillas de las bases a repintar
+C 0x8682 los nueve jugadores de la defensa, a repintar
 C 0x8685 el sonido callado
 C 0x8688 los sprites de la jugada, fuera
 C 0x868B el bateador siguiente: zurdo o diestro (0x8777)
@@ -263,7 +263,7 @@ C 0x87C8 ya lanzado?
 C 0x87D0 los sprites, fuera
 C 0x87D3 la ventana: el lanzamiento de cerca
 C 0x87ED el lanzador...
-C 0x87F8 las casillas de las bases a repintar
+C 0x87F8 los nueve jugadores de la defensa, a repintar
 C 0x87FB la pelota, fuera
 C 0x8800 el sonido callado
 C 0x8803 la fase del lanzamiento
@@ -301,9 +301,9 @@ C 0x88BD los tres sonidos del golpe
 L 0x88D6 robo                      El robo de base: el corredor sale con el mando del que batea
 C 0x88DC el boton del que batea?
 C 0x88E3 las bases ocupadas
-C 0x88E6 arriba: el de primera...
+C 0x88E6 a la derecha: el de primera...
 C 0x88F3 ...sale hacia segunda
-L 0x88F7 robo_segunda              A la derecha: el de segunda
+L 0x88F7 robo_segunda              Arriba: el de segunda
 L 0x8908 robo_tercera              A la izquierda: el de tercera
 L 0x8913 robo_sale                 El corredor sale: su sprite y su estado
 L 0x8921 toque                     El toque (bunt): la pelota llega al bate quieto
@@ -408,26 +408,26 @@ L 0x8F24 corredor_base_uno         Uno
 L 0x8F2E corredor_base_sig         El siguiente
 L 0x8F3E corredor_base_fin         Fin
 L 0x8F40 sprites_jugada_fuera      Los sprites de la jugada, fuera de la pantalla (Y 0xC2)
-L 0x8F52 bases_repinta             Las nueve casillas de las bases, a repintar
-L 0x8F55 bases_repinta_una         Una
-L 0x8F5D base_marca                Marca la casilla C de las bases (0xE24D): B bit 0, ocupada
-L 0x8F6C base_marca_pon            La marca
-L 0x8F6F bases_pinta               Pinta las casillas de las bases marcadas (0x8FE7 sus sitios, 0x8FCB sus dibujos)
-L 0x8F74 bases_pinta_busca         La siguiente marcada
-L 0x8F78 bases_pinta_sig           La siguiente
-L 0x8F7C bases_pinta_una           Una casilla: su dibujo segun la base y si esta ocupada
-L 0x8F89 bases_pinta_base          La base
-L 0x8FAF bases_pinta_d5            Un dibujo mas
-L 0x8FB0 bases_pinta_d4            Un dibujo mas
-L 0x8FB1 bases_pinta_d3            Un dibujo mas
-L 0x8FB2 bases_pinta_d2            Un dibujo mas
-L 0x8FB3 bases_pinta_d1            Un dibujo mas
-L 0x8FB4 bases_pinta_dibujo        Las 2 x 2 casillas a la tabla de nombres
-L 0x8FBF bases_pinta_casa          La casa
-L 0x8FC5 bases_pinta_cero          La 0
-D 0x8FCB 0x8FE7 bases_dibujos  Los dibujos de las bases: siete juegos de 2 x 2 casillas (vacia, ocupada...)
+L 0x8F52 defensa_repinta           Los nueve jugadores de la defensa, a repintar
+L 0x8F55 defensa_repinta_uno       Uno
+L 0x8F5D jugador_marca             Marca al jugador C de la defensa (0xE24D) para repintarlo: B bit 0, borrarlo (ya corre en un sprite)
+L 0x8F6C jugador_marca_pon         La marca
+L 0x8F6F defensa_pinta             Pinta los jugadores de la defensa marcados, en casillas (0x8FE7 sus sitios, 0x8FCB sus dibujos)
+L 0x8F74 defensa_pinta_busca       El siguiente marcado
+L 0x8F78 defensa_pinta_sig         El siguiente
+L 0x8F7C defensa_pinta_uno         Uno: su dibujo segun quien es, o vacio si hay que borrarlo
+L 0x8F89 defensa_pinta_quien       Quien es
+L 0x8FAF defensa_pinta_d5          Un dibujo mas
+L 0x8FB0 defensa_pinta_d4          Un dibujo mas
+L 0x8FB1 defensa_pinta_d3          Un dibujo mas
+L 0x8FB2 defensa_pinta_d2          Un dibujo mas
+L 0x8FB3 defensa_pinta_d1          Un dibujo mas
+L 0x8FB4 defensa_pinta_dibujo      Las 2 x 2 casillas a la tabla de nombres
+L 0x8FBF defensa_pinta_receptor    El receptor (1)
+L 0x8FC5 defensa_pinta_lanzador    El lanzador (0)
+D 0x8FCB 0x8FE7 defensa_dibujos  Los dibujos de los jugadores de la defensa: siete juegos de 2 x 2 casillas (vacio, el lanzador, el receptor, los del cuadro y los de fuera)
 F 0x8FCB 4
-D 0x8FE7 0x8FF9 bases_sitios  Los sitios de las nueve casillas de las bases en la tabla de nombres
+D 0x8FE7 0x8FF9 defensa_sitios  Los sitios de los nueve jugadores de la defensa en la tabla de nombres
 F 0x8FE7 w9
 L 0x8FF9 bloque                    Un bloque de B x C casillas desde HL a la tabla de nombres (0x1800 + DE)
 L 0x8FFD bloque_fila               Una fila
@@ -500,7 +500,7 @@ F 0x948A 12
 # ======================================================================
 B 0x94DE El ordenador juega con el segundo mando: en cada fase escribe en 0xE08E la direccion y el boton que pulsaria un jugador.
 L 0x94DE ordenador                 Los mandos del ordenador, segun la fase
-C 0x94DE uno contra el ordenador?
+C 0x94DE dos jugadores? entonces el ordenador no juega
 C 0x94E4 su mando a cero
 C 0x94EF la fase: bit 5 el lanzamiento...
 C 0x94F7 ...bit 4 la pelota bateada...
@@ -509,7 +509,7 @@ L 0x9505 ordenador_lanza           En el lanzamiento: si lanza el ordenador, el 
 C 0x950A la pelota ya sale?
 C 0x9511 el efecto, al azar
 C 0x9527 la altura a la que batea, al azar entre 0x9A y 0xA2
-C 0x953D el boton, en los cuadros pares de 64
+C 0x953D abajo y el boton 2, en los cuadros pares de 64
 L 0x951E ordenador_azar            Otro numero al azar (el registro R)
 L 0x9542 ordenador_batea           Batea: mueve el bate hacia la pelota y el boton al llegar a su altura
 L 0x954F ordenador_batea_x         La X del bate hacia la de la pelota
@@ -529,13 +529,13 @@ L 0x963A ordenador_bateada         La pelota bateada: el ordenador en el campo l
 L 0x964A ordenador_bateada_base    A que base
 L 0x9661 ordenador_bateada_2       A segunda
 L 0x9676 ordenador_bateada_1       A primera
-L 0x9683 ordenador_bateada_3       A tercera
+L 0x9683 ordenador_bateada_3       Hacia primera
 L 0x968C ordenador_corre           Los corredores del ordenador
 L 0x96A6 ordenador_corre_base      Hacia la base libre
 L 0x96BE ordenador_corre_vuelve    O vuelven
-L 0x96CD ordenador_abajo           Abajo
-L 0x96D0 ordenador_boton           El boton
-L 0x96D3 ordenador_derecha         A la derecha
+L 0x96CD ordenador_arriba          Arriba
+L 0x96D0 ordenador_derecha         A la derecha
+L 0x96D3 ordenador_abajo           Abajo
 L 0x96D6 ordenador_izquierda       A la izquierda
 L 0x96D9 ordenador_fin_jugada      Al acabar la jugada
 # ======================================================================
@@ -566,9 +566,9 @@ L 0x9875 pelota_x_pon              Guardada
 L 0x988D pelota_y                  La Y en la ventana y en el campo
 L 0x98A1 pelota_y_pon              Guardada
 L 0x98BA pelota_tamano             El tamano segun la distancia (0x990E)
-L 0x98E7 pelota_efecto_der         El efecto, con el mando del que lanza: a la derecha...
-L 0x98E8 pelota_efecto_izq         ...o a la izquierda
-L 0x98F4 pelota_efecto_baja        Mas baja
+L 0x98E7 pelota_efecto_arriba      El efecto, con el mando del que lanza: arriba, un punto mas...
+L 0x98E8 pelota_efecto_x           ...y a la izquierda o a la derecha
+L 0x98F4 pelota_efecto_izq         Un punto a la izquierda
 L 0x98F6 pelota_llega              Ha llegado: fin del vuelo
 D 0x9901 0x9917 pelota_tablas  La velocidad (0x9901) y el dibujo (0x990E) de la pelota segun la distancia
 L 0x9917 tiro_base                 El lanzamiento a una base (0xE043): la pelota sale, vuela hasta la base y vuelve al lanzador
@@ -695,7 +695,7 @@ L 0xA36F campo_interior            Los del cuadro: segunda, primera o tercera
 L 0xA385 campo_1                   El de primera
 L 0xA38B campo_2                   El de segunda
 L 0xA392 campo_3                   El de tercera
-L 0xA397 campo_va                  El que va, y su base marcada
+L 0xA397 campo_va                  El que va: su sitio en casillas se borra (ahora corre en un sprite)
 L 0xA3CD campo_jardin_3            El jardinero de la izquierda
 L 0xA3D3 campo_jardin_2            El del centro
 L 0xA3D9 campo_jardin_1            El de la derecha
@@ -735,11 +735,11 @@ L 0xA623 tiro_sitio                Su sitio
 L 0xA642 tiro_pon                  El sprite de la marca
 L 0xA64A tiro_color                El color de la marca, que parpadea
 L 0xA656 tiro_color_pon            Guardado
-L 0xA65A base_ocupada              CY si la base A esta ocupada por un corredor de los cuatro
+L 0xA65A cubre_base                CY si hay quien cubra la base A (0xE055): C, el jugador de la defensa que la cubre (0xA668)
 L 0xA660 base_ocupada_uno          Uno
 L 0xA670 base_ocupada_si           Si: su casilla de la tabla 0xA668
 L 0xA67F base_ocupada_fin          Fin
-D 0xA668 0xA670 bases_casillas  Las casillas de las bases para la marca
+D 0xA668 0xA670 cubren  El jugador de la defensa que cubre cada base: dos por base
 D 0xA682 0xA68A bases_xy  La Y y la X de las cuatro bases
 F 0xA682 2
 L 0xA68A tiro_vuela                El tiro: con el boton sale hacia la base; vuela; llega
@@ -771,20 +771,20 @@ D 0xA8AD 0xA8B6 velocidades  La velocidad segun la distancia a casa (0xACEE)
 L 0xA8B6 vram_girada               BC bytes de HL a la VRAM DE, cada uno girado (0xACA1) y con WRTVRM
 L 0xA8B7 vram_girada_uno           Uno
 L 0xA8C8 mandos                    Los dos mandos: el teclado (filas 3, 5, 6 y 7), GTSTCK y GTTRIG, en 0xE08C (el 1) y 0xE08E (el 2), con lo recien pulsado detras
-L 0xA8D6 mandos_d                  La tecla D? (fila 3 bit 2)
-L 0xA8DC mandos_f5                 La fila 5
-L 0xA8E7 mandos_f5b                Otra tecla
+L 0xA8D6 mandos_e                  La E: arriba del 2
+L 0xA8DC mandos_f5                 La fila 5: la S, izquierda del 2
+L 0xA8E7 mandos_f5b                La X: abajo del 2
 L 0xA8ED mandos_cursores           Los cursores (GTSTCK 0)
-L 0xA8FE mandos_f7                 La fila 7
-L 0xA909 mandos_f7b                Otra
-L 0xA90F mandos_f7c                Otra
+L 0xA8FE mandos_f7                 La fila 7: TAB, el boton 2 del 2
+L 0xA909 mandos_f7b                BS: el boton 2 del 1
+L 0xA90F mandos_f7c                RETURN: el boton 1 del 1
 L 0xA915 mandos_joy1               El mando 1
 L 0xA923 mandos_joy2               El mando 2
 L 0xA931 mandos_gatillos           Los gatillos (GTTRIG 1 a 4)
 L 0xA93D mandos_gatillo2           El 2
 L 0xA949 mandos_gatillo3           El 3
 L 0xA955 mandos_gatillo4           El 4
-L 0xA961 mandos_barra              Con dos jugadores, la barra y la fila 6 son del primero
+L 0xA961 mandos_barra              Contra el ordenador, la barra y GRAPH son tambien los botones del primero
 L 0xA973 mandos_graph              La fila 6
 L 0xA97E mandos_guarda             Guarda y lo recien pulsado
 L 0xA99E stick                     GTSTCK A en los bits del juego (0xA9AC)
@@ -1146,7 +1146,7 @@ C 0x813F ...y el del lanzador
 C 0x8145 GAME SET (0x80)
 C 0x8158 las del ordenador
 C 0x815C D, las del jugador
-C 0x8165 bit 7: un jugador
+C 0x8165 bit 7: dos jugadores
 C 0x8169 gana el ordenador o empatan: fin
 C 0x816F ...ya la tercera?
 C 0x817C en 0xE000
@@ -1169,7 +1169,7 @@ C 0x81E9 y el 2
 C 0x81F4 otra vez, tras 250 cuadros
 C 0x81F6 la musica...
 C 0x81F9 ...aun suena?
-C 0x81FD 0xE006: dos jugadores de momento
+C 0x81FD 0xE006 = 0x20: uno contra el ordenador, de momento
 C 0x8203 los mandos
 C 0x8206 los dos, juntos
 C 0x8217 la opcion 1 (dos jugadores)...
@@ -1183,8 +1183,8 @@ C 0x8232 ...bit 4: parpadea
 C 0x8236 sin flecha (0x8254)
 C 0x823A fila 13, columna 1
 C 0x823D 1 x 3 casillas
-C 0x8246 la opcion: 0 dos jugadores...
-C 0x8248 ...1: un jugador (bit 7)
+C 0x8246 la opcion: 0 uno contra el ordenador...
+C 0x8248 ...1: dos jugadores (bit 7)
 C 0x825C los mandos
 C 0x8265 el boton?
 C 0x8276 a la izquierda?
@@ -1208,7 +1208,7 @@ C 0x82D6 los sprites que parpadean
 C 0x82D9 los sprites a la VRAM
 C 0x82E6 la interrupcion ha acabado
 C 0x830A el campo: los colores
-C 0x830D las bases
+C 0x830D los jugadores de la defensa
 C 0x8310 la ventana
 C 0x8313 las marcas de primera...
 C 0x8318 ...y de segunda
@@ -1309,7 +1309,7 @@ C 0x87DB el estado de las partes de la jugada a cero
 C 0x87EF el lanzador...
 C 0x87F2 ...el bateador...
 C 0x87F5 ...y la jugada en marcha
-C 0x87FD (0xE24D: la marca de la base)
+C 0x87FD (0xE24D: el lanzador en casillas, a borrar)
 C 0x880A el paso...
 C 0x880D ...bit 7: la pelota
 C 0x8810 bit 6: la salida
@@ -1338,7 +1338,7 @@ C 0x88E1 el boton?
 C 0x88EA el de primera ya corre?
 C 0x88ED primera...
 C 0x88EF ...su corredor
-C 0x88F7 a la derecha?
+C 0x88F7 arriba?
 C 0x88FE segunda
 C 0x8904 a tercera
 C 0x8908 a la izquierda?
@@ -1398,7 +1398,7 @@ C 0x8A48 bit 4
 C 0x8A4C bit 3
 C 0x8A50 bit 2
 C 0x8A58 32 cuadros
-C 0x8A5D (0xE24D)
+C 0x8A5D (0xE24D: el lanzador en casillas, a pintar)
 C 0x8A76 tres de cada cuatro, otra cosa
 C 0x8A7D el cuadro del swing...
 C 0x8A80 ...a tiempo?
@@ -1510,7 +1510,7 @@ C 0x8CCA sin robo
 C 0x8CD0 0xE01C...
 C 0x8CD3 ...0x40: el tercer out
 C 0x8CD7 el bateador nuevo
-C 0x8CDE las bases a repintar
+C 0x8CDE los jugadores de la defensa, a repintar
 C 0x8CE1 la fase del cambio de campo
 C 0x8CE8 las ordenes del mando...
 C 0x8CEB ...la direccion
@@ -1617,7 +1617,7 @@ C 0x8EF5 la pelota bateada, quieta
 C 0x8EFA la pelota
 C 0x8EFF la orden
 C 0x8F04 el tiro
-C 0x8F09 la marca de la base
+C 0x8F09 el receptor en casillas, a borrar
 C 0x8F0E la cuenta
 C 0x8F14 la fase de los corredores
 C 0x8F1C los cuatro corredores...
@@ -1859,7 +1859,7 @@ C 0x9537 la cuenta de cuadros...
 C 0x953A ...bit 6?
 C 0x9545 bit 7?
 C 0x9549 una vez
-C 0x954B el boton y la izquierda
+C 0x954B a la derecha y el boton 2
 C 0x9552 la pelota...
 C 0x9555 ...cerca?
 C 0x955A la X de la pelota...
@@ -1879,13 +1879,13 @@ C 0x9596 la pelota bateada?
 C 0x959B el de primera
 C 0x95A2 su Y...
 C 0x95A7 ...pasada la mitad?
-C 0x95AB el boton y arriba
+C 0x95AB a la derecha y el boton 2
 C 0x95B1 el de segunda
 C 0x95BD pasada la mitad?
-C 0x95C1 el boton y a la derecha
+C 0x95C1 arriba y el boton 2
 C 0x95C7 el de tercera
 C 0x95D3 pasada la mitad?
-C 0x95D7 el boton y abajo
+C 0x95D7 a la izquierda y el boton 2
 C 0x95DB la cuenta...
 C 0x95DE ...16?
 C 0x95E1 el boton
@@ -1906,13 +1906,13 @@ C 0x964D ...las bases
 C 0x9650 primera ocupada...
 C 0x9654 ...sin corredor en marcha?
 C 0x9658 el boton...
-C 0x965C ...a segunda
+C 0x965C ...a la izquierda: tercera
 C 0x9661 segunda ocupada?
 C 0x9669 la direccion...
-C 0x966D el boton a la derecha
+C 0x966D el boton y arriba: segunda
 C 0x9676 tercera?
 C 0x967C la direccion
-C 0x9683 el boton abajo
+C 0x9683 el boton y a la derecha: primera
 C 0x968F IX...
 C 0x9691 ...en HL
 C 0x9692 el boton
@@ -1936,7 +1936,7 @@ C 0x96FA bit 6: se mueve
 C 0x96FD bit 5: lanza
 C 0x9701 bit 4: espera
 C 0x9705 los sprites del lanzador, fuera
-C 0x970E 0xE24D
+C 0x970E el lanzador en casillas, a borrar: ahora es sprite
 C 0x9711 Y 0x02, X 0x78
 C 0x9717 el color del equipo...
 C 0x971A ...dibujo 0x28
@@ -2032,12 +2032,12 @@ C 0x98C9 la distancia...
 C 0x98CC ...antes de 0x23 no hay efecto
 C 0x98CF cada dos cuadros
 C 0x98D5 el mando del que lanza
-C 0x98DB a la derecha?
-C 0x98DF a la izquierda?
+C 0x98DB arriba?
+C 0x98DF abajo?
 C 0x98E3 dos menos
-C 0x98EB arriba?
-C 0x98EF abajo?
-C 0x98F2 mas abajo
+C 0x98EB a la izquierda?
+C 0x98EF a la derecha?
+C 0x98F2 un punto a la derecha
 C 0x98F6 la pelota...
 C 0x98F9 ...se acaba
 C 0x98FB y 0xE00D...
@@ -2066,7 +2066,7 @@ C 0x995B el color del equipo...
 C 0x995E ...dibujo 0x24
 C 0x9963 el dibujo del lanzador
 C 0x9967 el camino a cero
-C 0x996D la casilla de la base
+C 0x996D el jugador de esa base, en casillas
 C 0x9971 ocupada
 C 0x9976 la pelota en el lanzador...
 C 0x997C ...dibujo 0x3C, color 0x0F
@@ -2115,7 +2115,7 @@ C 0x9A62 ...0xBFA2
 C 0x9A68 el sprite del lanzador, fuera
 C 0x9A6D el tiro...
 C 0x9A71 ...y el campo, a cero
-C 0x9A74 la casilla de la base...
+C 0x9A74 el jugador de la base...
 C 0x9A78 ...vacia
 C 0x9A7D el lanzador otra vez
 C 0x9A88 su estado...
@@ -2163,7 +2163,7 @@ C 0x9E0C adelante o atras?
 C 0x9E10 los topes del diestro...
 C 0x9E1A ...o del zurdo
 C 0x9E1D la X del bateador
-C 0x9E20 atras?
+C 0x9E20 a la izquierda?
 C 0x9E22 los cuatro sprites
 C 0x9E2A al tope?
 C 0x9E2D cuatro sprites...
@@ -2175,7 +2175,7 @@ C 0x9E40 el paso del cuadro 5
 C 0x9E45 el del cuadro 10
 C 0x9E4B arriba o abajo?
 C 0x9E4E la Y del bate
-C 0x9E51 abajo?
+C 0x9E51 arriba (1)?
 C 0x9E56 hasta 0x27
 C 0x9E59 un punto
 C 0x9E5B hasta 0x10
@@ -2283,11 +2283,11 @@ C 0xA065 a donde se puede...
 C 0xA068 ...de los de esa clase
 C 0xA06A juntos en los bits bajos
 C 0xA073 primera
-C 0xA075 arriba?
+C 0xA075 a la derecha: primera?
 C 0xA079 segunda
-C 0xA07B derecha?
+C 0xA07B arriba: segunda?
 C 0xA07F tercera
-C 0xA081 izquierda?
+C 0xA081 a la izquierda: tercera?
 C 0xA084 se puede?
 C 0xA093 primera
 C 0xA096 su corredor
@@ -2429,7 +2429,7 @@ C 0xA349 ...a la izquierda?
 C 0xA352 mas 4
 C 0xA355 a donde va
 C 0xA359 sin base
-C 0xA35C la marca de la base
+C 0xA35C el lanzador en casillas, a borrar
 C 0xA361 el color del equipo
 C 0xA367 va a por ella
 C 0xA372 del 0 al 3: primera
@@ -2440,7 +2440,7 @@ C 0xA39A su direccion
 C 0xA39B guardada
 C 0xA3A0 su base...
 C 0xA3A3 ...guardada...
-C 0xA3A6 ...ocupada
+C 0xA3A6 ...a borrar en casillas
 C 0xA3AC como la coge...
 C 0xA3B1 ...guardado
 C 0xA3B2 el color del equipo
@@ -2450,7 +2450,7 @@ C 0xA3E3 el color
 C 0xA3E9 su base...
 C 0xA3EC ...guardada...
 C 0xA3EF ...corriendo
-C 0xA3F6 ocupada
+C 0xA3F6 a borrar en casillas
 C 0xA3FA como la coge
 C 0xA402 va a por ella
 C 0xA40A nadie: espera
@@ -2555,10 +2555,10 @@ C 0xA5E2 la nueva...
 C 0xA5E9 ...guardada
 C 0xA5EE la de antes...
 C 0xA5F6 ...y la marcada
-C 0xA5FC la de antes ocupada?
-C 0xA602 ...vacia
-C 0xA607 la nueva...
-C 0xA60D ...marcada
+C 0xA5FC el jugador que cubria la de antes
+C 0xA602 ...se vuelve a pintar
+C 0xA607 el que cubre la nueva...
+C 0xA60D ...a borrar: sale en un sprite
 C 0xA612 su sitio
 C 0xA618 cuatro bases
 C 0xA61A el bit de la base...
@@ -2600,11 +2600,11 @@ C 0xA6DD los dos sprites del campo, fuera
 C 0xA6E5 las bases de la jugada...
 C 0xA6EB ...ocupadas?
 C 0xA6F1 sin bits de corredores
-C 0xA6F9 las dos casillas...
-C 0xA700 ...vacias
+C 0xA6F9 los dos jugadores...
+C 0xA700 ...se vuelven a pintar
 C 0xA70C la base de antes...
 C 0xA70F ...ocupada?
-C 0xA714 vacia
+C 0xA714 se vuelve a pintar
 C 0xA719 sin bits de corredores
 C 0xA723 la base marcada es el destino
 C 0xA729 la marca...
@@ -2693,26 +2693,26 @@ C 0xA8BF el siguiente
 C 0xA8C1 BC bytes
 C 0xA8C8 B el mando 1, C el mando 2
 C 0xA8CB la fila 3 del teclado
-C 0xA8D0 una tecla...
-C 0xA8D4 ...abajo del 2
-C 0xA8D6 otra...
-C 0xA8DA ...derecha del 2
+C 0xA8D0 la D...
+C 0xA8D4 ...derecha del 2
+C 0xA8D6 la E...
+C 0xA8DA ...arriba del 2
 C 0xA8DC la fila 5
-C 0xA8E1 una tecla...
+C 0xA8E1 la S...
 C 0xA8E5 ...izquierda del 2
-C 0xA8E7 otra...
-C 0xA8EB ...arriba del 2
+C 0xA8E7 la X...
+C 0xA8EB ...abajo del 2
 C 0xA8ED los cursores
 C 0xA8F2 al mando 1
 C 0xA8F3 la fila 6
-C 0xA8F8 una tecla...
+C 0xA8F8 CTRL...
 C 0xA8FC ...boton del 2
 C 0xA8FE la fila 7
-C 0xA903 una tecla...
+C 0xA903 TAB...
 C 0xA907 ...boton 2 del 2
-C 0xA909 otra...
+C 0xA909 BS...
 C 0xA90D ...boton 2 del 1
-C 0xA90F otra...
+C 0xA90F RETURN...
 C 0xA913 ...boton del 1
 C 0xA915 el mando 1 (GTSTCK 1)
 C 0xA91B nada?
@@ -2728,7 +2728,7 @@ C 0xA949 GTTRIG 3: el segundo boton del mando 1
 C 0xA953 al 1
 C 0xA955 GTTRIG 4: el del mando 2
 C 0xA95F al 2
-C 0xA961 un jugador?
+C 0xA961 dos jugadores?
 C 0xA968 GTTRIG 0: la barra...
 C 0xA971 ...el boton del 1
 C 0xA975 la fila 6...
@@ -2742,8 +2742,8 @@ C 0xA98A el de antes...
 C 0xA98B ...el nuevo...
 C 0xA98C ...lo recien pulsado
 C 0xA98F guardado
-C 0xA990 un jugador?
-C 0xA995 con dos, el mando 1 tambien...
+C 0xA990 dos jugadores?
+C 0xA995 contra el ordenador, el mando 1 lleva tambien...
 C 0xA99B ...con lo del 2
 C 0xA99F GTSTCK
 C 0xA9A5 la tabla
