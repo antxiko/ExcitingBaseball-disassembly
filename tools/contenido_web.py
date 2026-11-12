@@ -102,7 +102,10 @@ PAGINAS = [
       "the vibrato that is cleared in the BIOS, the computer's joystick, the code nobody calls "
       "and the borrowed font",
       "el vibrato que se borra en la BIOS, el mando del ordenador, el c&oacute;digo que nadie "
-      "llama y la fuente prestada")],
+      "llama y la fuente prestada"),
+     ("SECRETS-AND-BUGS.html", "SECRETOS-Y-FALLOS.html", "Secrets and bugs", "Secretos y fallos",
+      "what was searched for: no hidden keys, a vibrato cleared into the BIOS, and the scoreboard checked",
+      "lo que se ha buscado: ninguna tecla escondida, un vibrato que se borra en la BIOS, y el marcador comprobado")],
     [("UNDER-THE-HOOD.html", "POR-DENTRO.html", "Under the hood", "Por dentro",
       "rebuilding the ROM, the BIOS it uses, the interrupt, the RAM, the sound engine and the "
       "tools",
